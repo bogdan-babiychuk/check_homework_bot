@@ -1,9 +1,8 @@
-import time 
+import time
 import telegram
 import os
 from dotenv import load_dotenv
 import requests
-from dotenv import load_dotenv 
 from logging.handlers import RotatingFileHandler
 import logging
 from http import HTTPStatus
@@ -13,11 +12,13 @@ load_dotenv()
 logger = logging.getLogger(__name__)
 logging.basicConfig(
     level=logging.DEBUG,
-    filename='main.log', 
+    filename='main.log',
     format='%(asctime)s, %(levelname)s, %(name)s, %(message)s'
 )
 logger.setLevel(logging.DEBUG)
-handler = RotatingFileHandler('my_logger.log', maxBytes=50000000, backupCount=5)
+handler = RotatingFileHandler('my_logger.log',
+                              maxBytes=50000000,
+                              backupCount=5)
 logger.addHandler(handler)
 formatter = logging.Formatter(
     '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
@@ -45,20 +46,19 @@ def check_tokens():
     """Проверяет доступность переменных окружения."""
     return all([PRACTICUM_TOKEN, TELEGRAM_TOKEN, TELEGRAM_CHAT_ID])
 
-    
 
 def send_message(bot, message):
-    """ Сообщает удаолсь ли отправить сообщение или нет """
+    """Сообщает удаолсь ли отправить сообщение или нет."""
     try:
         bot.send_message(chat_id=TELEGRAM_CHAT_ID, text=message)
         logging.debug(f'Сообщение <{message}> отправлено')
     except Exception:
         logging.error(f'Сообщение <{message}> не отправлено')
-        raise('Сообщение не отправлено')
+        raise ('Сообщение не отправлено')
 
 
 def get_api_answer(timestamp):
-    """ Делаем API запрос к указаному URL и проверям на доступность"""
+    """Делаем API запрос к указаному URL и проверям на доступность."""
     try:
         payload = {'from_date': timestamp}
         response = requests.get(ENDPOINT, headers=HEADERS, params=payload)
@@ -67,12 +67,11 @@ def get_api_answer(timestamp):
         response_api = response.json()
         return response_api
     except Exception:
-        logging.ERROR(f'ENDPOINT не доступен')
-        
-    
+        logging.ERROR(f'{ENDPOINT} не доступен')
+
 
 def check_response(response):
-    """ Проверка ответа от API, соответствуют ли типы днанных ожидаемым"""
+    """Проверка ответа от API, соответствуют ли типы днанных ожидаемым."""
     if not isinstance(response, dict):
         logging.error('Ошибка в ответе API')
         raise TypeError('Ошибка данных')
@@ -86,30 +85,21 @@ def check_response(response):
 
     elif response['homeworks'] is None:
         logging.debug('Список Пустой')
-    
     return response
 
-        
 
-def parse_status(homework)-> str: 
-    """ Проверка обновленние статуса запроса"""
-    try:
-        homework_status = homework.get('status')
-        homework_name = homework['homework_name']
-        verdict = str(HOMEWORK_VERDICTS[homework_status])
-        if 'homework_name' not in homework:
-            logging.error('Такого имени не существует')
-            raise KeyError(f'Имя {homework_name}, не существует')
-    
-        if homework_status not in HOMEWORK_VERDICTS:
-            logging.error('Отсутствие статуса')
-            raise KeyError(f'Статус {homework_status}, не существует')
-
-    except KeyError as error:
-        logger.error(f'API ответ не содержит искомого ключа : {error}')
-        return (f"Изменился статус проверки работы {homework_name}. {verdict}")
-         
-
+def parse_status(homework):
+    """Извлекает из информации о конкретной домашней работе статус."""
+    if 'homework_name' not in homework:
+        raise KeyError("ошибка")
+    if 'status' not in homework:
+        raise KeyError('Ошибка')
+    status = homework['status']
+    if status not in HOMEWORK_VERDICTS:
+        raise ValueError('ошибка')
+    return 'Изменился статус проверки работы "{}". {}'.format(
+        homework['homework_name'], HOMEWORK_VERDICTS[status]
+    )
 
 
 def main():
@@ -117,20 +107,17 @@ def main():
     if not check_tokens():
         logging.critical('Какой то токен отсутствует')
         raise ValueError('Проверьте переменные окружения')
-    
     timestamp = int(time.time())
     bot = telegram.Bot(token=TELEGRAM_TOKEN)
-    
     while True:
         timestamp = int(time.time())
         empty_status = ''
         try:
             response = get_api_answer(timestamp)
-            homework = check_response(response)[0]
+            homework = check_response(response).get('homeworks')[0]
             message = parse_status(homework)
             if empty_status != message:
                 send_message(bot, message)
-
             else:
                 logging.error('Чучуть надо подождать')
 
@@ -139,7 +126,7 @@ def main():
             send_message(bot, f'Сбой в работе программы: {error}')
         finally:
             time.sleep(RETRY_PERIOD)
-                
+
 
 if __name__ == '__main__':
     main()
