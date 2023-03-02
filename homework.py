@@ -1,3 +1,4 @@
+import sys
 import time
 import telegram
 import os
@@ -6,25 +7,11 @@ import requests
 from logging.handlers import RotatingFileHandler
 import logging
 from http import HTTPStatus
+from exceptions import ErrorMessageException, ErrorStatusCode
 
 load_dotenv()
 
 logger = logging.getLogger(__name__)
-logging.basicConfig(
-    level=logging.DEBUG,
-    filename='main.log',
-    format='%(asctime)s, %(levelname)s, %(name)s, %(message)s'
-)
-logger.setLevel(logging.DEBUG)
-handler = RotatingFileHandler('my_logger.log',
-                              maxBytes=50000000,
-                              backupCount=5)
-logger.addHandler(handler)
-formatter = logging.Formatter(
-    '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
-)
-
-handler.setFormatter(formatter)
 
 PRACTICUM_TOKEN = os.getenv('YANDEX_TOKEN')
 TELEGRAM_TOKEN = os.getenv('TOKEN')
@@ -54,7 +41,7 @@ def send_message(bot, message):
         logging.debug(f'Сообщение <{message}> отправлено')
     except Exception:
         logging.error(f'Сообщение <{message}> не отправлено')
-        raise ('Сообщение не отправлено')
+        raise ErrorMessageException('Сообщение не отправлено')
 
 
 def get_api_answer(timestamp):
@@ -63,7 +50,7 @@ def get_api_answer(timestamp):
         payload = {'from_date': timestamp}
         response = requests.get(ENDPOINT, headers=HEADERS, params=payload)
         if response.status_code != HTTPStatus.OK:
-            raise 'Ошибка статуса в ответе.'
+            raise ErrorStatusCode('Ошибка статуса в ответе.')
         response_api = response.json()
         return response_api
     except Exception:
@@ -106,7 +93,7 @@ def main():
     """Основная логика работы бота."""
     if not check_tokens():
         logging.critical('Какой то токен отсутствует')
-        raise ValueError('Проверьте переменные окружения')
+        raise sys.exit('Прекращение работы')
     timestamp = int(time.time())
     bot = telegram.Bot(token=TELEGRAM_TOKEN)
     while True:
@@ -129,4 +116,20 @@ def main():
 
 
 if __name__ == '__main__':
+    logger = logging.getLogger(__name__)
+    logging.basicConfig(
+        level=logging.DEBUG,
+        filename='main.log',
+        format='%(asctime)s, %(levelname)s, %(name)s, %(message)s'
+    )
+    logger.setLevel(logging.DEBUG)
+    handler = RotatingFileHandler('my_logger.log',
+                                  maxBytes=50000000,
+                                  backupCount=5)
+    logger.addHandler(handler)
+    formatter = logging.Formatter(
+        '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+    )
+
+    handler.setFormatter(formatter)
     main()
