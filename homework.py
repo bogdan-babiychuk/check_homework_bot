@@ -93,7 +93,7 @@ def main():
     """Основная логика работы бота."""
     if not check_tokens():
         logging.critical('Какой то токен отсутствует')
-        raise sys.exit('Прекращение работы')
+        sys.exit('Прекращение работы')
     timestamp = int(time.time())
     bot = telegram.Bot(token=TELEGRAM_TOKEN)
     while True:
